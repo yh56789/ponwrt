@@ -74,7 +74,7 @@ jobs:
 
       - name: Configure (only three devices)
         run: |
-          ./scripts/kconfig.pl + configs/an7581.config configs/release.config configs/three-devices.config > .config
+          ./scripts/kconfig.pl + configs/an7581.config + configs/release.config configs/three-devices.config > .config
           # Disable every device profile except the three requested ones.
           sed -i -E \
             '/^CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_(fiberhome_hg5585f-ct|znxt_zn504xg-d|znxt_zn515xg-d)=y$/! s/^CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_([^=]+)=y$/# CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_\1 is not set/' \
