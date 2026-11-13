@@ -1,0 +1,140 @@
+name: Build 3 devices (AN7581)
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag
+        required: true
+        default: '3devices'
+        type: string
+  push:
+    paths:
+      - '.github/workflows/build-three-devices.yml'
+      - 'configs/three-devices.config'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-three-devices
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build 3 devices (an7581)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free build space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost
+          sudo apt-get clean
+
+      - name: Install build dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            asciidoc autoconf automake autopoint binutils bison build-essential \
+            bzip2 ccache clang cmake cpio curl device-tree-compiler flex gawk \
+            gettext git g++-multilib gcc-multilib gperf help2man intltool \
+            libelf-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev \
+            libmpfr-dev libncurses-dev libpython3-dev libreadline-dev libssl-dev \
+            libtool libyaml-dev lld llvm ninja-build p7zip-full patch pkgconf \
+            python3 python3-docutils python3-pip python3-ply python3-pyelftools \
+            qemu-utils re2c rsync scons squashfs-tools subversion swig texinfo \
+            uglifyjs unzip wget xmlto xxd zlib1g-dev zstd
+
+      - name: Add luci-app-easytier + easytier from upstream
+        run: |
+          git clone --depth=1 https://github.com/EasyTier/luci-app-easytier.git /tmp/et
+          mkdir -p package/luci-app-easytier package/easytier
+          cp -rf /tmp/et/luci-app-easytier/* package/luci-app-easytier/
+          cp -rf /tmp/et/easytier/* package/easytier/
+          echo "=== added ==="
+          ls package/luci-app-easytier package/easytier
+
+      - name: Cache downloads
+        uses: actions/cache@v4
+        with:
+          path: dl
+          key: ponwrt-dl-an7581-3dev-${{ hashFiles('feeds.conf.default', 'configs/*.config') }}
+          restore-keys: |
+            ponwrt-dl-an7581-
+
+      - name: Install feeds
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Configure (only three devices)
+        run: |
+          ./scripts/kconfig.pl + configs/an7581.config configs/release.config configs/three-devices.config > .config
+          # Disable every device profile except the three requested ones.
+          sed -i -E \
+            '/^CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_(fiberhome_hg5585f-ct|znxt_zn504xg-d|znxt_zn515xg-d)=y$/! s/^CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_([^=]+)=y$/# CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_\1 is not set/' \
+            .config
+          make defconfig
+          # Enforce once more in case defconfig restored Kconfig defaults.
+          sed -i -E \
+            '/^CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_(fiberhome_hg5585f-ct|znxt_zn504xg-d|znxt_zn515xg-d)=y$/! s/^CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_([^=]+)=y$/# CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_\1 is not set/' \
+            .config
+          echo "=== Enabled device profiles ==="
+          grep '^CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_.*=y' .config || true
+          count=$(grep -c '^CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_.*=y' .config || true)
+          if [ "$count" -ne 3 ]; then
+            echo "ERROR: expected exactly 3 enabled device profiles, got $count"
+            exit 1
+          fi
+          echo "=== Requested packages (post-defconfig) ==="
+          for p in curl unzip luci-app-homeproxy luci-i18n-homeproxy-zh-cn luci-app-ttyd luci-i18n-ttyd-zh-cn luci-app-filemanager luci-i18n-filemanager-zh-cn luci-app-wol luci-i18n-wol-zh-cn luci-app-frpc luci-i18n-frpc-zh-cn luci-app-openclash luci-i18n-openclash-zh-cn easytier luci-app-easytier luci-i18n-easytier-zh-cn; do
+            if grep -qE "^CONFIG_PACKAGE_${p}=y" .config; then echo "OK   $p"; else echo "MISS $p"; fi
+          done
+
+      - name: Download sources
+        run: make download -j"$(nproc)"
+
+      - name: Build
+        run: make -j"$(nproc)"
+
+      - name: Collect firmware files
+        run: |
+          mkdir -p out
+          src="bin/targets/airoha/an7581"
+          find "$src" -maxdepth 1 -type f \
+            \( -name "*hg5585f-ct*" -o -name "*zn504xg-d*" -o -name "*zn515xg-d*" \) \
+            -exec cp -v {} out/ \;
+          echo "=== Collected files ==="
+          ls -lh out/
+          test -n "$(ls -A out)" || { echo "No firmware files found"; exit 1; }
+          tar --zstd -cf "ponwrt-3devices.tar.zst" -C out .
+          (cd out && sha256sum * > ../sha256sums)
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ponwrt-3devices
+          path: |
+            ponwrt-3devices.tar.zst
+            sha256sums
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Create release
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          gh release create "$RELEASE_TAG" \
+            ponwrt-3devices.tar.zst sha256sums \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "PonWrt 3 devices $RELEASE_TAG" \
+            --notes "Only fiberhome_hg5585f-ct, znxt_zn504xg-d, znxt_zn515xg-d (AN7581)." \
+            --prerelease
