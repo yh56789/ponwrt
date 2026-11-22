@@ -90,30 +90,30 @@ jobs:
           include $(INCLUDE_DIR)/package.mk
 
           define Package/iptv-fix
-  SECTION:=net
-  CATEGORY:=Network
-  TITLE:=IPTV multicast fix for VLAN subinterface bridge topology
-  DEPENDS:=+nftables +tcpdump +kmod-bridge
+          SECTION:=net
+          CATEGORY:=Network
+          TITLE:=IPTV multicast fix for VLAN subinterface bridge topology
+          DEPENDS:=+nftables +tcpdump +kmod-bridge
           endef
 
           define Package/iptv-fix/description
-  Fixes IPTV multicast flooding on AN7581 devices with VLAN subinterfaces as bridge ports.
-  Disables kernel IGMP snooping, disables MAC learning on multicast VLAN port, and
-  installs a userspace IGMP snooper that dynamically manages nftables sets to only
-  forward currently-watched channels.
+          Fixes IPTV multicast flooding on AN7581 devices with VLAN subinterfaces as bridge ports.
+          Disables kernel IGMP snooping, disables MAC learning on multicast VLAN port, and
+          installs a userspace IGMP snooper that dynamically manages nftables sets to only
+          forward currently-watched channels.
           endef
 
           define Build/Compile
           endef
 
           define Package/iptv-fix/install
-	$(INSTALL_DIR) $(1)/usr/libexec
-	$(INSTALL_BIN) ./files/usr/libexec/iptv-snoop $(1)/usr/libexec/
-	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) ./files/etc/init.d/zz-iptv-fix $(1)/etc/init.d/
-	$(INSTALL_BIN) ./files/etc/init.d/zz-iptv-snoop $(1)/etc/init.d/
-	$(INSTALL_DIR) $(1)/etc
-	$(INSTALL_DATA) ./files/etc/iptv-snoop.nft $(1)/etc/
+          	$(INSTALL_DIR) $(1)/usr/libexec
+          	$(INSTALL_BIN) ./files/usr/libexec/iptv-snoop $(1)/usr/libexec/
+          	$(INSTALL_DIR) $(1)/etc/init.d
+          	$(INSTALL_BIN) ./files/etc/init.d/zz-iptv-fix $(1)/etc/init.d/
+          	$(INSTALL_BIN) ./files/etc/init.d/zz-iptv-snoop $(1)/etc/init.d/
+          	$(INSTALL_DIR) $(1)/etc
+          	$(INSTALL_DATA) ./files/etc/iptv-snoop.nft $(1)/etc/
           endef
 
           $(eval $(call BuildPackage,iptv-fix))
@@ -132,18 +132,18 @@ jobs:
           STOP=01
 
           start() {
-	# 等 br-iptv 与 VLAN 子接口就绪
-	i=0
-	while [ $i -lt 30 ]; do
-		[ -d /sys/class/net/br-iptv/brif/ct-iptv-mc ] && break
-		i=$((i+1)); sleep 1
-	done
-	[ -d /sys/class/net/br-iptv ] || return 0
+          	# 等 br-iptv 与 VLAN 子接口就绪
+          	i=0
+          	while [ $i -lt 30 ]; do
+          		[ -d /sys/class/net/br-iptv/brif/ct-iptv-mc ] && break
+          		i=$((i+1)); sleep 1
+          	done
+          	[ -d /sys/class/net/br-iptv ] || return 0
 
-	echo 0 > /sys/class/net/br-iptv/bridge/multicast_snooping 2>/dev/null
-	bridge link set dev ct-iptv-mc learning off 2>/dev/null
-	bridge link set dev ct-iptv-mc mcast_flood on 2>/dev/null
-	logger -t iptv-fix "snooping=0, ct-iptv-mc learning off applied"
+          	echo 0 > /sys/class/net/br-iptv/bridge/multicast_snooping 2>/dev/null
+          	bridge link set dev ct-iptv-mc learning off 2>/dev/null
+          	bridge link set dev ct-iptv-mc mcast_flood on 2>/dev/null
+          	logger -t iptv-fix "snooping=0, ct-iptv-mc learning off applied"
           }
 
           boot() { start "$@"; }
@@ -156,30 +156,30 @@ jobs:
           USE_PROCD=1
 
           start_service() {
-	procd_open_instance
-	procd_set_param command /usr/libexec/iptv-snoop
-	procd_set_param respawn 3600 5 0
-	procd_set_param stdout 1
-	procd_set_param stderr 1
-	procd_close_instance
+          	procd_open_instance
+          	procd_set_param command /usr/libexec/iptv-snoop
+          	procd_set_param respawn 3600 5 0
+          	procd_set_param stdout 1
+          	procd_set_param stderr 1
+          	procd_close_instance
           }
           EOF
 
           # iptv-snoop.nft
           cat > package/iptv-fix/files/etc/iptv-snoop.nft <<'EOF'
           table bridge iptv_snoop {
-	set subs {
-		type ipv4_addr
-		flags timeout
-	}
-	chain grpfilter {
-		type filter hook forward priority 10; policy accept;
-		iifname "ct-iptv-mc" oifname "lan3" ip protocol igmp accept
-		iifname "ct-iptv-mc" oifname "lan3" ip daddr 224.0.0.1 accept
-		iifname "ct-iptv-mc" oifname "lan3" ip daddr 239.255.255.250 accept
-		iifname "ct-iptv-mc" oifname "lan3" ip daddr @subs counter accept
-		iifname "ct-iptv-mc" oifname "lan3" ip daddr 224.0.0.0/4 counter drop
-	}
+          	set subs {
+          		type ipv4_addr
+          		flags timeout
+          	}
+          	chain grpfilter {
+          		type filter hook forward priority 10; policy accept;
+          		iifname "ct-iptv-mc" oifname "lan3" ip protocol igmp accept
+          		iifname "ct-iptv-mc" oifname "lan3" ip daddr 224.0.0.1 accept
+          		iifname "ct-iptv-mc" oifname "lan3" ip daddr 239.255.255.250 accept
+          		iifname "ct-iptv-mc" oifname "lan3" ip daddr @subs counter accept
+          		iifname "ct-iptv-mc" oifname "lan3" ip daddr 224.0.0.0/4 counter drop
+          	}
           }
           EOF
 
@@ -194,12 +194,12 @@ jobs:
           CUR=""
 
           is_video_group() {
-	case "$1" in
-	239.255.255.250) return 1 ;;
-	224.*) return 1 ;;
-	22[4-9].*|23[0-9].*) return 0 ;;
-	esac
-	return 1
+          	case "$1" in
+          	239.255.255.250) return 1 ;;
+          	224.*) return 1 ;;
+          	22[4-9].*|23[0-9].*) return 0 ;;
+          	esac
+          	return 1
           }
 
           while [ ! -d /sys/class/net/br-iptv ]; do sleep 2; done
@@ -211,29 +211,29 @@ jobs:
 
           # 阶段1
           timeout 3 tcpdump -i ct-iptv-mc -n -q 'ip multicast' 2>/dev/null \
- | awk '{for(i=1;i<=NF;i++) if($i==">"){g=$(i+1); sub(/:.*/,"",g); sub(/\.[0-9]+$/,"",g); print g}}' \
- | grep -E '^22[4-9]\.|^23[0-9]\.' | sort -u > /tmp/iptv-groups.txt
+          | awk '{for(i=1;i<=NF;i++) if($i==">"){g=$(i+1); sub(/:.*/,"",g); sub(/\.[0-9]+$/,"",g); print g}}' \
+          | grep -E '^22[4-9]\.|^23[0-9]\.' | sort -u > /tmp/iptv-groups.txt
           n=0
           while read -r g; do
-	nft add element $SET "{ $g }" 2>/dev/null && n=$((n+1))
+          	nft add element $SET "{ $g }" 2>/dev/null && n=$((n+1))
           done < /tmp/iptv-groups.txt
           logger -t iptv-snoop "stage1: seeded $n groups"
 
           # 阶段2
           tcpdump -i br-iptv -n -l igmp 2>/dev/null | while read -r line; do
-	case "$line" in
-	*" report "*)
-		g=$(printf '%s' "$line" | sed -n 's/.* report \([0-9]\{1,3\}\(\.[0-9]\{1,3\}\)\{3\}\).*/\1/p')
-		[ -n "$g" ] || continue
-		is_video_group "$g" || continue
-		[ "$g" = "$CUR" ] && continue
-		# 换台：重置为该频道
-		nft flush set $SET 2>/dev/null
-		nft add element $SET "{ $g timeout 12h }" 2>/dev/null
-		CUR="$g"
-		logger -t iptv-snoop "tracking channel group $g"
-		;;
-	esac
+          	case "$line" in
+          	*" report "*)
+          		g=$(printf '%s' "$line" | sed -n 's/.* report \([0-9]\{1,3\}\(\.[0-9]\{1,3\}\)\{3\}\).*/\1/p')
+          		[ -n "$g" ] || continue
+          		is_video_group "$g" || continue
+          		[ "$g" = "$CUR" ] && continue
+          		# 换台：重置为该频道
+          		nft flush set $SET 2>/dev/null
+          		nft add element $SET "{ $g timeout 12h }" 2>/dev/null
+          		CUR="$g"
+          		logger -t iptv-snoop "tracking channel group $g"
+          		;;
+          	esac
           done
           EOF
 
