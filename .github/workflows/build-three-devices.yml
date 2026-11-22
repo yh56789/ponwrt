@@ -77,7 +77,7 @@ jobs:
           SECTION:=net
           CATEGORY:=Network
           TITLE:=IPTV multicast fix for VLAN subinterface bridge topology
-          DEPENDS:=+nftables +tcpdump +kmod-bridge
+          DEPENDS:=+nftables +tcpdump
           endef
 
           define Package/iptv-fix/description
@@ -304,7 +304,12 @@ jobs:
         run: make download -j"$(nproc)"
 
       - name: Build
-        run: make -j"$(nproc)"
+        run: |
+          set -o pipefail
+          make -j"$(nproc)" || {
+            echo "===== parallel build failed; retrying with -j1 V=s for diagnostics ====="
+            make -j1 V=s
+          }
 
       - name: Collect firmware files
         run: |
