@@ -1,0 +1,89 @@
+# Extra packages for the ImageBuilder-based build
+# (.github/workflows/build-using-imagebuilder.yml).
+#
+# These are installed ON TOP of the ImageBuilder defaults, which already are:
+#   base-files ca-bundle dropbear fstools libc libgcc libustream-openssl logd
+#   mtd netifd uci uclient-fetch urandom-seed urngd procd-ujail
+#   dnsmasq-full firewall4 nftables kmod-nft-offload odhcp6c odhcpd-ipv6only
+#   ppp ppp-mod-pppoe kmod-leds-gpio kmod-gpio-button-hotplug
+#   airoha-en7581-npu-firmware kmod-nf-conntrack-bridge uboot-envtools
+#
+# One package per line. Blank lines and '#' comments are ignored.
+# A leading '-' removes a package from the defaults (e.g. "-dnsmasq").
+
+# --- LuCI (luci is not in DEFAULT_PACKAGES, so it must be listed) ---
+luci
+luci-light
+luci-base
+luci-mod-admin-full
+luci-mod-network
+luci-mod-status
+luci-mod-system
+luci-app-firewall
+luci-app-package-manager
+luci-theme-argon
+luci-proto-ipv6
+luci-proto-ppp
+luci-i18n-base-zh-cn
+luci-i18n-firewall-zh-cn
+luci-i18n-package-manager-zh-cn
+
+# --- PonWrt PON stack (enabled by configs/an7581.config, not by defaults) ---
+autocore
+kmod-airoha-pon-frontend
+kmod-airoha-xpon
+airoha-ponctl
+airoha-pond
+airoha-pon-debug
+luci-app-pon
+luci-i18n-pon-zh-cn
+
+# --- base tools enabled by the source build ---
+conntrack
+cgi-io
+uhttpd
+uhttpd-mod-ubus
+ethtool-full
+ip-full
+ip-bridge
+iperf3
+tcpdump
+i2c-tools
+nand-utils
+ubi-utils
+shellsync
+wget-ssl
+nftables-json
+
+# --- requested apps ---
+curl
+unzip
+luci-app-ttyd
+luci-i18n-ttyd-zh-cn
+luci-app-filemanager
+luci-i18n-filemanager-zh-cn
+rtp2httpd
+luci-app-rtp2httpd
+luci-i18n-rtp2httpd-zh-cn
+honk
+luci-app-honk
+luci-i18n-honk-zh-cn
+luci-app-frpc
+luci-i18n-frpc-zh-cn
+easytier
+luci-app-easytier
+luci-i18n-easytier-zh-cn
+iptv-fix
+
+# --- from configs/release.config ---
+luci-app-upnp
+mount-utils
+kmod-nf-conntrack-bridge
+kmod-nf-flow
+kmod-nft-bridge
+kmod-nft-offload
+kmod-nft-tproxy
+kmod-tun
+kmod-wireguard
+kmod-sched-cake
+kmod-tcp-bbr

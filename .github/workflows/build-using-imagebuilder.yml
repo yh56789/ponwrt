@@ -1,0 +1,163 @@
+#=====================================================================================
+# Fast build: reuse a prebuilt ImageBuilder instead of compiling OpenWrt.
+#
+# Prerequisite: run "Build ImageBuilder (AN7581)" once (workflow_dispatch). It
+# publishes an ImageBuilder tarball to a release. This workflow then only runs
+#   make image PROFILE=<device> PACKAGES=<list>
+# which takes a few minutes per device (same idea as ophub's
+# build-openwrt-using-imagebuilder.yml).
+#
+# Use "Build 3 devices (AN7581)" instead when the source tree, kernel, target or
+# any package source changed (that one really compiles).
+#=====================================================================================
+
+name: Build firmware using ImageBuilder (3 devices)
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag for the firmware
+        required: true
+        default: 'ib-build'
+        type: string
+      imagebuilder_tag:
+        description: Release tag that holds the ImageBuilder
+        required: true
+        default: 'ib-an7581'
+        type: string
+      extra_packages:
+        description: Extra packages (space separated, optional)
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-using-imagebuilder
+  cancel-in-progress: true
+
+env:
+  TARGET_DIR: airoha/an7581
+  PROFILES: 'fiberhome_hg5585f-ct znxt_zn504xg-d znxt_zn515xg-d'
+
+jobs:
+  build:
+    name: ImageBuilder build (an7581)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download ImageBuilder from release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IB_TAG: ${{ inputs.imagebuilder_tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p ib-dl
+          gh release download "$IB_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern '*imagebuilder*.tar.zst' \
+            --dir ib-dl --clobber
+          ls -lh ib-dl/
+
+      - name: Extract ImageBuilder
+        run: |
+          set -euo pipefail
+          mkdir -p ib
+          tar --zstd -xf ib-dl/*imagebuilder*.tar.zst -C ib --strip-components=1
+          ls -l ib | head -30
+
+      - name: Build images
+        env:
+          EXTRA_PACKAGES: ${{ inputs.extra_packages }}
+        run: |
+          set -euo pipefail
+          cd ib
+
+          # Package list: configs/imagebuilder-packages.txt (+ optional extras).
+          PKGS=$(grep -vE '^\s*(#|$)' ../configs/imagebuilder-packages.txt | tr '\n' ' ')
+          PKGS="$PKGS $EXTRA_PACKAGES"
+          echo "=== Packages ==="
+          echo "$PKGS" | tr ' ' '\n' | sed '/^$/d' | sort -u | tr '\n' ' '; echo
+
+          echo "=== Available profiles ==="
+          make -s info
+
+          for p in $PROFILES; do
+            echo "::group::make image PROFILE=$p"
+            make image \
+              PROFILE="$p" \
+              PACKAGES="$PKGS" \
+              BIN_DIR="$PWD/../bin-out"
+            echo "::endgroup::"
+          done
+
+          echo "=== Built files ==="
+          find ../bin-out -type f | sort
+
+      - name: Verify images
+        run: |
+          set -euo pipefail
+          cd bin-out/targets/${TARGET_DIR}
+          for p in $PROFILES; do
+            found=$(ls *"$p"* 2>/dev/null | grep -E '\.(itb|bin|img)$' || true)
+            [ -n "$found" ] || { echo "ERROR: no image for $p"; exit 1; }
+            echo "OK   $p -> $found"
+          done
+          # Packages that must be present / absent in the generated manifests.
+          for p in honk rtp2httpd luci-app-honk luci-app-rtp2httpd iptv-fix; do
+            grep -hqE "^${p} " *.manifest || { echo "ERROR: $p missing from image"; exit 1; }
+            echo "OK   $p"
+          done
+          if grep -hqE '^luci-app-wol ' *.manifest; then
+            echo "ERROR: luci-app-wol must not be installed"; exit 1
+          fi
+          echo "OK   luci-app-wol absent"
+
+      - name: Collect firmware files
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          src="bin-out/targets/${TARGET_DIR}"
+          find "$src" -maxdepth 1 -type f \
+            \( -name "*hg5585f-ct*" -o -name "*zn504xg-d*" -o -name "*zn515xg-d*" \) \
+            -exec cp -v {} out/ \;
+          ls -lh out/
+          test -n "$(ls -A out)" || { echo "No firmware files found"; exit 1; }
+          tar --zstd -cf "ponwrt-3devices-imagebuilder.tar.zst" -C out .
+          (cd out && sha256sum * > ../sha256sums)
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ponwrt-3devices-imagebuilder
+          path: |
+            ponwrt-3devices-imagebuilder.tar.zst
+            sha256sums
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          IB_TAG: ${{ inputs.imagebuilder_tag }}
+        run: |
+          NOTES=$(printf '%s\n' \
+            "Built from ImageBuilder release '${IB_TAG}'." \
+            "Only fiberhome_hg5585f-ct, znxt_zn504xg-d, znxt_zn515xg-d (AN7581)." \
+            "Packages: +rtp2httpd/luci-app-rtp2httpd, +honk/luci-app-honk, -luci-app-wol," \
+            "+iptv-fix (IPTV multicast fix from pzzfl/BrightSpeed-XG2010G)." \
+            "Package source: https://mirror.nju.edu.cn/immortalwrt/snapshots")
+          gh release create "$RELEASE_TAG" \
+            ponwrt-3devices-imagebuilder.tar.zst sha256sums \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "PonWrt 3 devices (ImageBuilder) $RELEASE_TAG" \
+            --notes "$NOTES" \
+            --prerelease
