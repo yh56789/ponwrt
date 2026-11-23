@@ -103,7 +103,7 @@ jobs:
       - name: Verify images
         run: |
           set -euo pipefail
-          cd bin-out/targets/${TARGET_DIR}
+          cd bin-out
           for p in $PROFILES; do
             found=$(ls *"$p"* 2>/dev/null | grep -E '\.(itb|bin|img)$' || true)
             [ -n "$found" ] || { echo "ERROR: no image for $p"; exit 1; }
@@ -123,7 +123,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p out
-          src="bin-out/targets/${TARGET_DIR}"
+          src="bin-out"
           find "$src" -maxdepth 1 -type f \
             \( -name "*hg5585f-ct*" -o -name "*zn504xg-d*" -o -name "*zn515xg-d*" \) \
             -exec cp -v {} out/ \;
