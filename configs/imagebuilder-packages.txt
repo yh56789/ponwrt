@@ -65,6 +65,12 @@ luci-i18n-filemanager-zh-cn
 rtp2httpd
 luci-app-rtp2httpd
 luci-i18n-rtp2httpd-zh-cn
+# Kernel modules required by honk (honk itself is not installed)
+kmod-sched-core
+kmod-sched-bpf
+kmod-veth
+kmod-nfnetlink-queue
+kmod-nft-queue
 luci-app-frpc
 luci-i18n-frpc-zh-cn
 luci-app-easytier
