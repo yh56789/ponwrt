@@ -257,30 +257,7 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: Install honk build toolchain (Rust / Zig / bpf-linker)
-        run: |
-          set -euo pipefail
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-            | sh -s -- -y --profile minimal --no-modify-path
-          . "$HOME/.cargo/env"
-
-          eval "$(./feeds/honk/honk/honk_toolchain.sh)"
-          echo "honk pin: ${HONK_SRC_VERSION}  zig ${ZIG_VERSION}  bpf-linker ${BPF_LINKER_VERSION}"
-
-          curl -fsSL -o /tmp/bpf-linker.tar.zst \
-            "https://github.com/aya-rs/bpf-linker/releases/download/v${BPF_LINKER_VERSION}/bpf-linker-x86_64-unknown-linux-musl.tar.zst"
-          echo "${BPF_LINKER_SHA256}  /tmp/bpf-linker.tar.zst" | sha256sum -c -
-          sudo tar --zstd -xf /tmp/bpf-linker.tar.zst -C /usr/local/bin
-
-          curl -fsSL -o /tmp/zig.tar.xz \
-            "https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz"
-          sudo tar -xJf /tmp/zig.tar.xz -C /usr/local
-          sudo ln -sf "/usr/local/zig-x86_64-linux-${ZIG_VERSION}/zig" /usr/local/bin/zig
-
-          zig version
-          bpf-linker --version
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-
+      
       - name: Configure (3 devices + ImageBuilder)
         run: |
           ./scripts/kconfig.pl + configs/an7581.config + configs/release.config configs/three-devices.config > .config

@@ -232,30 +232,7 @@ jobs:
       # honk-core is written in Rust + eBPF and is built by the honk package.
       # Its helper script resolves the pinned zig / bpf-linker versions from
       # the feed's Makefile, so install them before the real build starts.
-      - name: Install honk build toolchain (Rust / Zig / bpf-linker)
-        run: |
-          set -euo pipefail
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-            | sh -s -- -y --profile minimal --no-modify-path
-          . "$HOME/.cargo/env"
-
-          eval "$(./feeds/honk/honk/honk_toolchain.sh)"
-          echo "honk pin: ${HONK_SRC_VERSION}  zig ${ZIG_VERSION}  bpf-linker ${BPF_LINKER_VERSION}"
-
-          curl -fsSL -o /tmp/bpf-linker.tar.zst \
-            "https://github.com/aya-rs/bpf-linker/releases/download/v${BPF_LINKER_VERSION}/bpf-linker-x86_64-unknown-linux-musl.tar.zst"
-          echo "${BPF_LINKER_SHA256}  /tmp/bpf-linker.tar.zst" | sha256sum -c -
-          sudo tar --zstd -xf /tmp/bpf-linker.tar.zst -C /usr/local/bin
-
-          curl -fsSL -o /tmp/zig.tar.xz \
-            "https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz"
-          sudo tar -xJf /tmp/zig.tar.xz -C /usr/local
-          sudo ln -sf "/usr/local/zig-x86_64-linux-${ZIG_VERSION}/zig" /usr/local/bin/zig
-
-          zig version
-          bpf-linker --version
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-
+      
       - name: Configure (only three devices)
         run: |
           # NOTE: in scripts/kconfig.pl the '+' operator is BINARY (merges exactly
@@ -291,7 +268,7 @@ jobs:
           grep -q '^CONFIG_KERNEL_DEBUG_INFO_BTF=y' .config \
             || { echo "ERROR: CONFIG_KERNEL_DEBUG_INFO_BTF is not enabled, honk will not work"; exit 1; }
           echo "=== Requested packages (post-defconfig) ==="
-          for p in curl unzip luci-app-ttyd luci-i18n-ttyd-zh-cn luci-app-filemanager luci-i18n-filemanager-zh-cn rtp2httpd luci-app-rtp2httpd luci-i18n-rtp2httpd-zh-cn honk luci-app-honk luci-i18n-honk-zh-cn luci-app-frpc luci-i18n-frpc-zh-cn easytier luci-app-easytier luci-i18n-easytier-zh-cn iptv-fix; do
+          for p in curl unzip luci-app-ttyd luci-i18n-ttyd-zh-cn luci-app-filemanager luci-i18n-filemanager-zh-cn rtp2httpd luci-app-rtp2httpd luci-i18n-rtp2httpd-zh-cn honk luci-app-  luci-app-frpc luci-i18n-frpc-zh-cn easytier luci-app-easytier luci-i18n-easytier-zh-cn iptv-fix; do
             if grep -qE "^CONFIG_PACKAGE_${p}=y" .config; then echo "OK   $p"; else echo "MISS $p"; fi
           done
           echo "=== luci-app-wol must be gone ==="

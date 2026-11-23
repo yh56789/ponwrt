@@ -65,9 +65,6 @@ luci-i18n-filemanager-zh-cn
 rtp2httpd
 luci-app-rtp2httpd
 luci-i18n-rtp2httpd-zh-cn
-honk
-luci-app-honk
-luci-i18n-honk-zh-cn
 luci-app-frpc
 luci-i18n-frpc-zh-cn
 easytier

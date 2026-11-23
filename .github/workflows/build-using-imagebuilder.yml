@@ -110,7 +110,7 @@ jobs:
             echo "OK   $p -> $found"
           done
           # Packages that must be present / absent in the generated manifests.
-          for p in honk rtp2httpd luci-app-honk luci-app-rtp2httpd iptv-fix; do
+          for p in rtp2httpd luci-app-rtp2httpd iptv-fix; do
             grep -hqE "^${p} " *.manifest || { echo "ERROR: $p missing from image"; exit 1; }
             echo "OK   $p"
           done
