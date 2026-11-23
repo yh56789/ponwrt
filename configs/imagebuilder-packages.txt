@@ -67,7 +67,6 @@ luci-app-rtp2httpd
 luci-i18n-rtp2httpd-zh-cn
 luci-app-frpc
 luci-i18n-frpc-zh-cn
-easytier
 luci-app-easytier
 luci-i18n-easytier-zh-cn
 iptv-fix
