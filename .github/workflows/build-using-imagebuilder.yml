@@ -151,7 +151,7 @@ jobs:
           NOTES=$(printf '%s\n' \
             "Built from ImageBuilder release '${IB_TAG}'." \
             "Only fiberhome_hg5585f-ct, znxt_zn504xg-d, znxt_zn515xg-d (AN7581)." \
-            "Packages: +rtp2httpd/luci-app-rtp2httpd, +honk/luci-app-honk, -luci-app-wol," \
+            "Packages: +rtp2httpd/luci-app-rtp2httpd, -luci-app-wol, \
             "+iptv-fix (IPTV multicast fix from pzzfl/BrightSpeed-XG2010G)." \
             "Package source: https://mirror.nju.edu.cn/immortalwrt/snapshots")
           gh release create "$RELEASE_TAG" \

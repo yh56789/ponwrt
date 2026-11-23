@@ -268,7 +268,7 @@ jobs:
           grep -q '^CONFIG_KERNEL_DEBUG_INFO_BTF=y' .config \
             || { echo "ERROR: CONFIG_KERNEL_DEBUG_INFO_BTF is not enabled, honk will not work"; exit 1; }
           echo "=== Requested packages (post-defconfig) ==="
-          for p in curl unzip luci-app-ttyd luci-i18n-ttyd-zh-cn luci-app-filemanager luci-i18n-filemanager-zh-cn rtp2httpd luci-app-rtp2httpd luci-i18n-rtp2httpd-zh-cn honk luci-app-  luci-app-frpc luci-i18n-frpc-zh-cn easytier luci-app-easytier luci-i18n-easytier-zh-cn iptv-fix; do
+          for p in curl unzip luci-app-ttyd luci-i18n-ttyd-zh-cn luci-app-filemanager luci-i18n-filemanager-zh-cn rtp2httpd luci-app-rtp2httpd luci-i18n-rtp2httpd-zh-cn luci-app-  luci-app-frpc luci-i18n-frpc-zh-cn easytier luci-app-easytier luci-i18n-easytier-zh-cn iptv-fix; do
             if grep -qE "^CONFIG_PACKAGE_${p}=y" .config; then echo "OK   $p"; else echo "MISS $p"; fi
           done
           echo "=== luci-app-wol must be gone ==="
